@@ -1,0 +1,4 @@
+EC50_sita	1	1700
+Emax_met	1701	3400
+Ka_glu	3401	5100
+deviance	5101	6800

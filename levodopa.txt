@@ -1,0 +1,33 @@
+ 
+model {
+  solution[1:ngrid, 1:ndim] <- ode(init[1:ndim], 
+                                   tgrid[1:ngrid], 
+                                   D(C[1:ndim], t), 
+                                   origin, 
+                                   tol) 
+
+    Ke ~ dunif(0, 0.03) 
+    K ~ dunif(0, 0.03) 
+#     E ~ dunif(36, 56) 
+#     Emax ~ dunif(700, 900)
+    Ec50 ~ dunif(700, 900)
+#     gamma ~ dunif(1, 15)
+
+    E <- 46
+    Emax <- 29
+    gamma <- 9
+
+    D(C[2], t) <- Ke * (C[1] - C[2])
+    D(C[1], t) <- -Ke * (C[1] - C[2])-K*C[1]
+
+    
+
+    for (i in 1:ngrid){
+        obv_equ[i] <- E-Emax*pow(solution[i, 2],gamma)/(pow(Ec50,gamma)+pow(solution[i, 2],gamma))
+        obs_x[i] ~ dnorm(obv_equ[i], tau.x)
+    }
+    tau.x <- 1/var.x
+    var.x <- 1/(sd.x*sd.x)
+    sd.x ~ dunif(0, 5)
+}
+

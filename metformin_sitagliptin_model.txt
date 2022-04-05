@@ -1,0 +1,74 @@
+ 
+model {
+    
+    # loop over time grid 
+    for (j in 1:n.grid) {      
+        equ_x[j]<-a.language[j, 12]-a.language[j, 8]*Vdf_glu*10/1000
+        obs_x[j] ~ dnorm(equ_x[j] , tau.x)                           	    
+    }           
+
+    # parameters 
+
+    #sitagliptin
+    Ka_sita <- 1.64
+    Kqf_sita<-11.1
+    Vcf_sita<-266
+    Vpf_sita<-101
+    CLf_sita<-39.1
+    Emax_sita<-100
+    EC50_sita ~ dunif(0,24) 
+    #EC50_sita<-12.9
+    gamma_sita<-0.823
+
+    #metformin
+    Ka_met<-0.41
+    V_met<-113
+    CLf_met<-52.9
+    Emax_met ~ dunif(0,40)
+    #Emax_met<-19.8
+    EC50_met<-3.68
+    tau_met<-0.5
+    gamma_met<-0.55
+
+    #meal
+    Ktr_glu<-6.9
+    #Ka_glu<-0.892
+    Ka_glu ~ dunif(0,10)
+    Vdf_glu<-19.1
+    CLf_glu<-83.7
+    base_glu<-82.9
+
+    # ODE solutions
+    a.language[1:n.grid, 1:dim] <- 
+        ode.block(inits[1:n.block, 1:dim], 
+            grid[1:n.grid],                      
+            D(C[1:dim], t),                      
+            origins[1:n.block], tol)
+    #sitagliptin
+    D(C[1], t) <- -Ka_sita*C[1]
+    D(C[2], t) <- Ka_sita*C[1]-CLf_sita*C[2]/Vcf_sita- Kqf_sita*C[2]/Vcf_sita+Kqf_sita*C[3]/Vpf_sita 
+    D(C[3], t) <- Kqf_sita*C[2]/Vcf_sita-Kqf_sita*C[3]/Vpf_sita
+    Cp_si <- C[2]*1000/Vcf_sita
+    E_si <- Emax_sita*pow(Cp_si,gamma_sita)/(pow(EC50_sita,gamma_sita)+pow(Cp_si,gamma_sita))
+
+    #metformin
+    D(C[4], t) <- -Ka_met*C[4]
+    D(C[5], t) <- Ka_met*C[4]-CLf_met*C[5]/V_met
+    Cp_met <- C[5]/V_met
+    DR_met <- Emax_met*pow(Cp_met,gamma_met)/(pow(EC50_met,gamma_met)+pow(Cp_met,gamma_met))
+    D(C[6], t) <- (DR_met-C[6])/tau_met
+    D(C[7], t) <- (C[6]-C[7])/tau_met
+    D(C[8], t) <- (C[7]-C[8])/tau_met
+
+    #glu
+    D(C[9], t) <- -Ktr_glu*C[9]
+    D(C[10], t) <- Ktr_glu*C[9]-Ktr_glu*C[10]
+    D(C[11], t) <- Ktr_glu*C[10]-Ka_glu*C[11]
+    D(C[12], t) <- Ka_glu*C[11]-CLf_glu*(1+E_si/100)*C[12]/Vdf_glu #-C[8]*Vdf_glu*10/1000
+
+
+    tau.x <- 1/var.x
+    var.x <- 1/(sd.x*sd.x)
+    sd.x ~ dunif(0, 5)
+}
+
